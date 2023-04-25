@@ -1,3 +1,4 @@
+const path = require("path");
 const Bootcamp = require("../models/Bootcamp");
 const ErrorResponse = require("../utils/errorResponse");
 const asyncHandler = require("../middleware/async");
@@ -6,16 +7,10 @@ const asyncHandler = require("../middleware/async");
 //@routes       GET / api/v1/bootcamps
 //@access       public
 exports.getBootcamps = asyncHandler(async (req, res, next) => {
-  const bootcamps = await Bootcamp.find();
-  res.status(200).json({
-    success: true,
-    msg: "Show all bootcamps",
-    count: bootcamps.length,
-    data: bootcamps,
-  });
+  res.status(200).json(res.advancedResults);
 });
 
-//@desc         get single bootcamps
+//@desc         get single bootcamp
 //@routes       GET / api/v1/bootcamps/:id
 //@access       public
 exports.getBootcamp = asyncHandler(async (req, res, next) => {
@@ -39,18 +34,18 @@ exports.getBootcamp = asyncHandler(async (req, res, next) => {
 
 //@desc         create new bootcamps
 //@routes       POST / api/v1/bootcamps
-//@access       private
+//@access       Private
 exports.createBootcamp = asyncHandler(async (req, res, next) => {
   const bootcamp = await Bootcamp.create(req.body);
 
   res.status(201).json({
     success: true,
-    msg: `Create New Bootcamp`,
+    msg: `Bootcamp Created Successfully`,
     data: bootcamp,
   });
 });
 
-//@desc         update new bootcamps
+//@desc         update bootcamps
 //@routes       PUT / api/v1/bootcamps/:id
 //@access       private
 exports.updateBootcamp = asyncHandler(async (req, res, next) => {
@@ -73,11 +68,11 @@ exports.updateBootcamp = asyncHandler(async (req, res, next) => {
   });
 });
 
-//@desc         delete new bootcamps
+//@desc         delete bootcamps
 //@routes       DELETE / api/v1/bootcamps/:id
-//@access       private
+//@access       Private
 exports.deleteBootcamp = asyncHandler(async (req, res, next) => {
-  const bootcamp = await Bootcamp.findByIdAndDelete(req.params.id);
+  const bootcamp = await Bootcamp.findById(req.params.id);
 
   if (!bootcamp) {
     return res.status(400).json({
@@ -85,8 +80,65 @@ exports.deleteBootcamp = asyncHandler(async (req, res, next) => {
       msg: "Invalid ID",
     });
   }
+
+  bootcamp.removeBootcampAndCourseAssociatedWithIt();
+
   res.status(200).json({
     success: true,
     msg: `Deleted Successfully:  bootcamp ${req.params.id}`,
+  });
+});
+
+//@desc         Upload photo for bootcamp
+//@routes       PUT / api/v1/bootcamps/:id/photo
+//@access       Private
+exports.bootcampPhotoUpload = asyncHandler(async (req, res, next) => {
+  const bootcamp = await Bootcamp.findById(req.params.id);
+
+  if (!bootcamp) {
+    return res.status(400).json({
+      success: false,
+      msg: "Invalid ID",
+    });
+  }
+
+  if (!req.files) {
+    return next(new ErrorResponse(`Please Upload a file`, 400));
+  }
+
+  const file = req.files.file;
+
+  //Make sure the upload file is image
+  if (!file.mimetype.startsWith("image")) {
+    return next(new ErrorResponse(`Please upload an image file`, 400));
+  }
+
+  //Check file size
+  if (file.size > process.env.MAX_FILE_UPLOAD) {
+    return next(
+      new ErrorResponse(
+        `Image size must be less than ${process.env.MAX_FILE_UPLOAD}`,
+        400
+      )
+    );
+  }
+
+  //Create custom filename
+  file.name = `photo_${bootcamp._id}${path.parse(file.name).ext}`;
+
+  file.mv(`${process.env.FILE_UPLOAD_PATH}/${file.name}`, async (err) => {
+    if (err) {
+      console.error(err);
+      return next(new ErrorResponse(`Problem with file upload`, 500));
+    }
+
+    await Bootcamp.findByIdAndUpdate(req.params.id, {
+      photo: file.name,
+    });
+
+    res.status(200).json({
+      success: true,
+      data: file.name,
+    });
   });
 });
