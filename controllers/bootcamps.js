@@ -63,12 +63,9 @@ exports.createBootcamp = asyncHandler(async (req, res, next) => {
 
 //@desc         update bootcamps
 //@routes       PUT / api/v1/bootcamps/:id
-//@access       private
+//@access       Private
 exports.updateBootcamp = asyncHandler(async (req, res, next) => {
-  const bootcamp = await Bootcamp.findByIdAndUpdate(req.params.id, req.body, {
-    new: true,
-    runValidators: true,
-  });
+  let bootcamp = await Bootcamp.findById(req.params.id);
 
   if (!bootcamp) {
     return res.status(400).json({
@@ -76,6 +73,21 @@ exports.updateBootcamp = asyncHandler(async (req, res, next) => {
       msg: "Invalid ID",
     });
   }
+
+  //Make sure user is bootcamp owner
+  if (bootcamp.user.toString() !== req.user.id && req.user.role !== "admin") {
+    return next(
+      new ErrorResponse(
+        `User ${req.user.id} is not authorized to update this bootcamp`,
+        401
+      )
+    );
+  }
+
+  bootcamp = await Bootcamp.findByIdAndUpdate(req.params.id, req.body, {
+    new: true,
+    runValidators: true,
+  });
 
   res.status(200).json({
     success: true,
@@ -97,6 +109,16 @@ exports.deleteBootcamp = asyncHandler(async (req, res, next) => {
     });
   }
 
+  //Make sure user is the bootcamp owner
+  if (bootcamp.user.toString() !== req.user.id && req.user.role !== "admin") {
+    return next(
+      new ErrorResponse(
+        `User ${req.user.id} is not authorized to Delete this bootcamp`,
+        401
+      )
+    );
+  }
+
   bootcamp.removeBootcampAndCourseAssociatedWithIt();
 
   res.status(200).json({
@@ -116,6 +138,16 @@ exports.bootcampPhotoUpload = asyncHandler(async (req, res, next) => {
       success: false,
       msg: "Invalid ID",
     });
+  }
+
+  //Make sure user is the bootcamp owner
+  if (bootcamp.user.toString() !== req.user.id && req.user.role !== "admin") {
+    return next(
+      new ErrorResponse(
+        `User ${req.user.id} is not authorized to Delete this bootcamp`,
+        401
+      )
+    );
   }
 
   if (!req.files) {
