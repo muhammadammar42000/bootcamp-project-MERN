@@ -37,7 +37,7 @@ const importData = async () => {
     await Bootcamp.create(bootcamps);
     await Course.create(courses);
     await User.create(users);
-    console.log("Bootcamp and Courses Created".green.inverse);
+    console.log("Bootcamp, Courses and Users Created".green.inverse);
   } catch (error) {
     console.log(error);
   }
