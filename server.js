@@ -8,6 +8,9 @@ const colors = require("colors");
 const errorHandler = require("./middleware/error");
 const fileupload = require("express-fileupload");
 const cookieParser = require("cookie-parser");
+const mongoSanitize = require("express-mongo-sanitize");
+const helmet = require("helmet");
+var xss = require("xss-clean");
 
 //load env vars
 dotenv.config({ path: "./config/config.env" });
@@ -38,6 +41,15 @@ if (process.env.NODE_ENV === "development") {
 
 //File uploading
 app.use(fileupload());
+
+//Sanatize Data -->  By default, $ and . characters are removed completely from user-supplied input
+app.use(mongoSanitize());
+
+// Set security headers
+app.use(helmet());
+
+//Prevent XSS attacks
+app.use(xss());
 
 //set static folder
 app.use(express.static(path.join(__dirname, "public")));
